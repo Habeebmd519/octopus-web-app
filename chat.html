@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Octopus Ai</title>
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css?v=8">
+</head>
+
+<body>
+    <div class="water-canvas" id="waterCanvas">
+        <div class="blob one"></div>
+        <div class="blob two"></div>
+        <div class="blob three"></div>
+    </div>
+
+    <div class="page">
+        <section id="chat" class="chat-page">
+            <div class="chat-shell">
+                <div class="chat-app-top">
+
+                    <div class="chat-app-id">
+                        <div class="chat-app-avatar">🐙</div>
+                        <div>
+                            <div class="chat-app-title">Octopus AI</div>
+                            <div class="chat-app-status">● Ready to explore Kerala</div>
+                        </div>
+                    </div>
+                    <div class="chat-app-actions">
+
+                        <button id="puterAuthButton" class="puter-auth-btn" data-puter-auth
+                            onclick="handlePuterAuthButton()">
+                            Sign in
+                        </button>
+
+                        <button class="icon-btn" title="New chat" onclick="createNewChatSession()">
+                            ＋
+                        </button>
+
+                        <button class="icon-btn" title="Voice coming soon">
+                            ⌘
+                        </button>
+
+                    </div>
+                </div>
+
+                <div class="chat-tabs-wrap">
+                    <div class="chat-tabs" id="chatTabs"></div>
+                </div>
+
+                <div class="canvas-area" id="canvasArea">
+                    <div class="empty-state-panel" id="emptyStatePanel">
+                        <div class="big-octo">🐙</div>
+                        <h2 class="chat-question">What should we discover today?</h2>
+                        <p class="chat-sub">
+                            Ask Octopus AI about Kerala places, images, routes, restaurants, hospitals,
+                            transport, or trip plans.
+                        </p>
+
+                        <div class="quick-prompts">
+                            <button onclick="usePrompt('Best waterfalls in Kerala')">Best waterfalls</button>
+                            <button onclick="usePrompt('Plan a 2 day trip to Wayanad')">Plan Wayanad trip</button>
+                            <button onclick="usePrompt('Hospitals nearby')">Hospitals nearby</button>
+                            <button onclick="usePrompt('Restaurants near Munnar')">Restaurants</button>
+                            <button onclick="usePrompt('Show tourist places near me on map')">Map near me</button>
+                        </div>
+                    </div>
+
+                    <div class="answer-canvas" id="answerCanvas"></div>
+
+                    <!-- Octopus Map Panel -->
+                    <div id="mapPanel" class="map-panel hidden">
+                        <div class="map-header">
+                            <div>
+                                <p class="map-label">LIVE MAP</p>
+                                <h3 id="mapTitle">Places near you</h3>
+                            </div>
+                            <button onclick="closeMapPanel()" class="map-close">×</button>
+                        </div>
+
+                        <div id="octopusMap"></div>
+                    </div>
+                </div>
+
+                <div class="input-dock">
+                    <div class="input-wrap">
+                        <textarea id="octopusInput" class="chat-input" rows="1"
+                            placeholder="Message Octopus AI..."></textarea>
+                        <button id="sendBtn" class="send-btn" onclick="sendOctopusMessage()">➜</button>
+                    </div>
+
+                    <div class="dock-note">Octopus Ai may make mistakes</div>
+                </div>
+            </div>
+            <!-- Puter Login Modal -->
+            <div id="puterLoginModal" class="puter-login-modal" aria-hidden="true">
+                <div class="puter-login-backdrop" onclick="closePuterLoginPopup()"></div>
+
+                <div class="puter-login-card" role="dialog" aria-modal="true" aria-labelledby="puterLoginTitle">
+
+                    <button class="puter-login-close" onclick="closePuterLoginPopup()" aria-label="Close">
+                        ×
+                    </button>
+
+                    <div class="puter-login-icon">🐙</div>
+
+                    <div class="puter-login-kicker">
+                        OCTOPUS AI
+                    </div>
+
+                    <h2 id="puterLoginTitle">
+                        Sign in to continue
+                    </h2>
+
+                    <p>
+                        Octopus AI uses Puter to power your AI conversation.
+                        Sign in with Puter to start chatting.
+                    </p>
+
+                    <button id="puterSignInButton" class="puter-signin-btn" onclick="signInToPuter()">
+
+                        <span>Continue with Puter</span>
+                        <span>→</span>
+
+                    </button>
+
+                    <div class="puter-login-note">
+                        Your Puter account covers your AI usage under the
+                        User-Pays model.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="v4-config.js?v=8"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="puter-agent.js?v=8"></script>
+    <script src="main.js?v=8"></script>
+</body>
+
+</html>

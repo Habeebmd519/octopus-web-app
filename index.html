@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Octopus AI — Kerala Travel Assistant</title>
+
+    <meta name="description"
+        content="Octopus AI is a smart Kerala travel assistant for destinations, routes, images, nearby hospitals, restaurants, transport, and trip plans.">
+
+    <meta name="keywords"
+        content="Kerala travel AI, Kerala tourism assistant, Kerala trip planner, Octopus AI, Octopus Kerala, Kerala AI, Munnar, Wayanad, Varkala, Bekal, Kochi travel, kerala ai, octopuskerala, octopus kerala">
+
+    <meta name="author" content="Muhammed Habeeb">
+    <meta name="robots" content="index, follow">
+
+    <link rel="canonical" href="https://octopuskerala.com/">
+
+    <meta property="og:title" content="Octopus AI — Kerala Travel Assistant">
+    <meta property="og:description"
+        content="Explore Kerala with AI. Find destinations, routes, images, restaurants, hospitals, transport, and trip plans.">
+    <meta property="og:url" content="https://octopuskerala.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://octopuskerala.com/og-image.png">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Octopus AI — Kerala Travel Assistant">
+    <meta name="twitter:description" content="A smart AI assistant built for Kerala tourism and nearby services.">
+    <meta name="twitter:image" content="https://octopuskerala.com/og-image.png">
+
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@800;900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=8">
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Octopus AI",
+  "alternateName": "Octopus Kerala",
+  "url": "https://octopuskerala.com/",
+  "description": "Octopus AI is a smart Kerala travel assistant for destinations, routes, images, nearby hospitals, restaurants, transport, and trip plans.",
+  "applicationCategory": "TravelApplication",
+  "operatingSystem": "Web",
+  "creator": {
+    "@type": "Person",
+    "name": "Muhammed Habeeb",
+    "url": "https://octopuskerala.com/"
+  },
+  "areaServed": {
+    "@type": "State",
+    "name": "Kerala"
+  },
+  "keywords": [
+    "Kerala travel AI",
+    "Kerala tourism assistant",
+    "Kerala trip planner",
+    "Octopus AI",
+    "Octopus Kerala",
+    "Munnar trip planner",
+    "Wayanad travel guide",
+    "Kerala nearby hospitals",
+    "Kerala restaurants near me"
+  ]
+}
+</script>
+</head>
+
+<body>
+    <div class="water-canvas" id="waterCanvas">
+        <div class="blob one"></div>
+        <div class="blob two"></div>
+        <div class="blob three"></div>
+    </div>
+
+    <div class="page">
+        <nav>
+            <a href="#" class="brand">
+                <div class="brand-mark">🐙</div>
+                <div>
+                    <div class="brand-title">Octopus AI</div>
+                    <div class="brand-sub">KeralaTour</div>
+                </div>
+            </a>
+
+            <div class="nav-links">
+                <a href="#services">Services</a>
+                <a href="#demo">Demo</a>
+                <a href="chat.html" class="nav-cta">Try Octopus</a>
+            </div>
+        </nav>
+
+        <main class="hero">
+            <div>
+                <div class="eyebrow"><span class="eyebrow-dot"></span> AI Travel Intelligence for Kerala</div>
+                <h1>Meet <span class="gradient">Octopus AI</span></h1>
+                <p class="hero-text seo-intro">
+
+                    Octopus AI is a smart Kerala travel assistant that helps you explore Kerala destinations,
+
+                    plan trips, find routes, view place images, and discover nearby services like restaurants,
+
+                    hospitals, railway stations, fuel stations, cafes, and transport options.
+
+                </p>
+
+                <p class="hero-text seo-support">
+
+                    Ask about popular Kerala tourist places like Munnar, Wayanad, Varkala, Bekal, Kochi,
+
+                    Alappuzha, Athirappilly, Thekkady, Vagamon, and more. Get clean AI answers with destination
+
+                    cards, image previews, map-based service results, and practical Kerala travel tips.
+
+                </p>
+
+                <div class="hero-actions">
+                    <a href="#chat" class="btn btn-primary">Start exploring <span>→</span></a>
+                    <a href="#services" class="btn btn-ghost">See services</a>
+                </div>
+
+                <div class="mini-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">Tourism</div>
+                        <div class="stat-label">Places, images, details</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">Maps</div>
+                        <div class="stat-label">Hospitals, food, routes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">AI Chat</div>
+                        <div class="stat-label">Natural answers + cards</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="orb-panel" aria-label="Octopus AI visual">
+                <div class="octopus-orb">
+                    <div class="octo-face">🐙</div>
+                </div>
+                <div class="floating-card top">
+                    <div class="label">Smart search</div>
+                    <div class="value">Find Munnar, Bekal, Wayanad, Varkala and more.</div>
+                </div>
+                <div class="floating-card left">
+                    <div class="label">Useful nearby</div>
+                    <div class="value">Hospitals, cafes, stations, fuel and ATMs.</div>
+                </div>
+                <div class="floating-card bottom">
+                    <div class="label">Trip planner</div>
+                    <div class="value">Day-wise Kerala plans with practical tips.</div>
+                </div>
+            </div>
+        </main>
+
+        <section id="services">
+            <div class="section-head">
+                <div class="section-kicker">Eight smart arms</div>
+                <h2 class="section-title">One AI for every travel need</h2>
+                <p class="section-desc">Octopus AI guides travelers with destination discovery, map services, practical
+                    tips, and clean visual cards inside one simple chat experience.</p>
+            </div>
+
+            <div class="services-grid">
+                <div class="service-card">
+                    <div class="service-icon">🌴</div>
+                    <div class="service-title">Destination Guide</div>
+                    <div class="service-text">Ask about beaches, waterfalls, hills, forts, museums, backwaters, and
+                        hidden spots.</div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🖼️</div>
+                    <div class="service-title">Place Images</div>
+                    <div class="service-text">Show destination cards with photos, highlights, best time, and location
+                        context.</div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🍽️</div>
+                    <div class="service-title">Food & Cafes</div>
+                    <div class="service-text">Find restaurants, cafes, food courts, and local food spots from map data.
+                    </div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🏥</div>
+                    <div class="service-title">Hospitals</div>
+                    <div class="service-text">Search hospitals, clinics, pharmacies, and medical services across Kerala.
+                    </div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🚉</div>
+                    <div class="service-title">Transport</div>
+                    <div class="service-text">Find airports, railway stations, bus stops, taxi points, and ferry
+                        terminals.</div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🗺️</div>
+                    <div class="service-title">Routes</div>
+                    <div class="service-text">Answer distance and travel-time questions with route guidance and
+                        practical notes.</div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">📅</div>
+                    <div class="service-title">Trip Plans</div>
+                    <div class="service-text">Generate 1-day, 2-day, weekend, and custom Kerala itinerary ideas.</div>
+                </div>
+                <div class="service-card">
+                    <div class="service-icon">🛟</div>
+                    <div class="service-title">Emergency Help</div>
+                    <div class="service-text">Find police stations, fuel points, ATMs, banks, and other important nearby
+                        services.</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo">
+            <div class="section-head">
+                <div class="section-kicker">Octopus Kerala AI</div>
+                <h2 class="section-title">Discover Kerala with one smart search</h2>
+                <p class="section-desc">
+                    Get instant Kerala travel guidance, destination cards, nearby services,
+                    railway help, route ideas, and image previews — all in one simple AI page.
+                </p>
+            </div>
+
+            <div class="chat-demo">
+                <div class="demo-copy">
+                    <h3>Ask anything about Kerala.</h3>
+                    <p>Octopus AI is designed to answer naturally and return useful cards when the answer needs places,
+                        images, hospitals, restaurants, or transport options.</p>
+                    <div class="prompt-list">
+                        <div class="prompt-pill">“Best waterfalls in Kerala”</div>
+                        <div class="prompt-pill">“Hospitals in Kozhikode”</div>
+                        <div class="prompt-pill">“Restaurants near Munnar”</div>
+                        <div class="prompt-pill">“Plan a 2 day trip to Wayanad”</div>
+                    </div>
+                </div>
+
+                <div class="demo-phone">
+                    <div class="phone-top">
+                        <div class="phone-avatar">🐙</div>
+                        <div>
+                            <div class="phone-name">Octopus AI</div>
+                            <div class="phone-status">● Online · Kerala travel assistant</div>
+                        </div>
+                    </div>
+                    <div class="messages">
+                        <div class="msg user">Best hill places for a weekend?</div>
+                        <div class="msg ai">Namaskaram 🙏 Here are great Kerala hill picks for a weekend: Munnar,
+                            Wayanad, Vagamon and Ponmudi.
+                            <div class="result-card">
+                                <div class="result-img"></div>
+                                <div class="result-body">
+                                    <div class="result-title">Munnar</div>
+                                    <div class="result-meta">Hill station · Tea gardens · Best time: October to March
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="msg user">Any hospital in Kozhikode?</div>
+                        <div class="msg ai">I can show nearby hospitals with address, contact, and map-service details
+                            when available.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="chat" class="chat-page">
+            <div class="chat-shell">
+                <div class="chat-app-top">
+                    <div class="chat-app-id">
+                        <div class="chat-app-avatar">🐙</div>
+                        <div>
+                            <div class="chat-app-title">Octopus AI</div>
+                            <div class="chat-app-status">● Ready to explore Kerala</div>
+                        </div>
+                    </div>
+                    <div class="chat-app-actions">
+                        <button id="navPuterSignIn" class="puter-auth-btn" data-puter-auth
+                            onclick="handlePuterAuthButton()">
+                            Sign in
+                        </button>
+                        <button class="icon-btn" title="New chat" onclick="createNewChatSession()">＋</button>
+                        <button class="icon-btn" title="Voice coming soon">⌘</button>
+                    </div>
+                </div>
+
+                <div class="canvas-area" id="canvasArea">
+                    <div class="empty-state-panel" id="emptyStatePanel">
+                        <div class="big-octo">🐙</div>
+                        <h2 class="chat-question">What should we discover today?</h2>
+                        <p class="chat-sub">Ask Octopus AI about Kerala places, images, routes, restaurants, hospitals,
+                            transport, or trip plans.</p>
+                        <div class="quick-prompts">
+                            <button onclick="usePrompt('Best waterfalls in Kerala')">Best waterfalls</button>
+                            <button onclick="usePrompt('Plan a 2 day trip to Wayanad')">Plan Wayanad trip</button>
+                            <button onclick="usePrompt('Hospitals in Kozhikode')">Hospitals nearby</button>
+                            <button onclick="usePrompt('Restaurants near Munnar')">Restaurants</button>
+                        </div>
+                    </div>
+                    <div class="answer-canvas" id="answerCanvas"></div>
+
+                    <div id="mapPanel" class="map-panel hidden">
+                        <div class="map-header">
+                            <div>
+                                <p class="map-label">LIVE MAP</p>
+                                <h3 id="mapTitle">Places near you</h3>
+                            </div>
+                            <button onclick="closeMapPanel()" class="map-close">×</button>
+                        </div>
+                        <div id="octopusMap"></div>
+                    </div>
+                </div>
+
+                <div class="input-dock">
+                    <div class="input-wrap">
+                        <textarea id="octopusInput" class="chat-input" rows="1"
+                            placeholder="Message Octopus AI..."></textarea>
+                        <button id="sendBtn" class="send-btn" onclick="sendOctopusMessage()">➜</button>
+                    </div>
+                    <div class="dock-note">Puter AI · Private Kerala tools</div>
+                </div>
+            </div>
+            <!-- Puter Login Modal -->
+            <div id="puterLoginModal" class="puter-login-modal" aria-hidden="true">
+                <div class="puter-login-backdrop" onclick="closePuterLoginPopup()"></div>
+
+                <div class="puter-login-card" role="dialog" aria-modal="true" aria-labelledby="puterLoginTitle">
+
+                    <button class="puter-login-close" onclick="closePuterLoginPopup()" aria-label="Close">
+                        ×
+                    </button>
+
+                    <div class="puter-login-icon">🐙</div>
+
+                    <div class="puter-login-kicker">
+                        OCTOPUS AI
+                    </div>
+
+                    <h2 id="puterLoginTitle">
+                        Sign in to continue
+                    </h2>
+
+                    <p>
+                        Octopus AI uses Puter to power your AI conversation.
+                        Sign in with Puter to start chatting.
+                    </p>
+
+                    <button id="puterSignInButton" class="puter-signin-btn" onclick="signInToPuter()">
+
+                        <span>Continue with Puter</span>
+                        <span>→</span>
+
+                    </button>
+
+                    <div class="puter-login-note">
+                        Your Puter account covers your AI usage under the
+                        User-Pays model.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div>© 2026 <span>Octopus AI</span> · Built for KeralaTour</div>
+            <div>Tourism intelligence + map-service discovery</div>
+        </footer>
+    </div>
+    <script src="v4-config.js?v=8"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="puter-agent.js?v=8"></script>
+    <script src="main.js?v=8"></script>
+</body>
+
+</html>
