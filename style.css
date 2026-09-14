@@ -2042,13 +2042,35 @@
      font-size: 22px;
  }
 
- #octopusMap {
+#octopusMap {
      width: 100%;
      height: 360px;
      border-radius: 20px;
      overflow: hidden;
      background: rgba(255, 255, 255, 0.06);
- }
+}
+
+/* Privacy-first location consent: this is shown before the browser prompt. */
+.location-dialog-backdrop {
+    position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center;
+    padding: 20px; background: rgba(3, 14, 25, .7); backdrop-filter: blur(8px);
+}
+.location-dialog {
+    width: min(430px, 100%); padding: 28px; border-radius: 24px;
+    color: #f4ffff; background: linear-gradient(150deg, #102b3a, #0a1724);
+    border: 1px solid rgba(103, 232, 249, .32); box-shadow: 0 28px 90px rgba(0,0,0,.5);
+}
+.location-dialog-icon { font-size: 34px; }
+.location-dialog h2 { margin: 12px 0 8px; font-size: 24px; }
+.location-dialog p { margin: 0; color: #b9d1d8; line-height: 1.55; }
+.location-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.location-dialog button { min-height: 44px; border-radius: 13px; border: 1px solid rgba(255,255,255,.16); cursor: pointer; font: inherit; font-weight: 700; }
+.location-allow { color: #032124; background: linear-gradient(135deg, #43e2e6, #7cf7d4); }
+.location-secondary, .location-manual { color: #eaf9fa; background: rgba(255,255,255,.08); }
+.location-manual { width: 100%; margin-top: 10px; }
+.location-result { display: grid; gap: 7px; margin-top: 14px; padding: 13px; border-radius: 14px; background: rgba(67, 226, 230, .09); border: 1px solid rgba(67, 226, 230, .2); }
+.location-result span { color: #b9d1d8; font-size: 13px; }
+.location-result a { width: fit-content; color: #7cf7d4; font-weight: 700; }
 
  /* =====================================================
    MODERN MAP BUTTONS

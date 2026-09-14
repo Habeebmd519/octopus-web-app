@@ -17,6 +17,21 @@ let lastMatchedPlaceIds = [];
 let userLat = null;
 let userLng = null;
 let userLocationText = "";
+let userLocation = null;
+let locationState = "LOCATION_UNKNOWN";
+let locationPermissionState = "unknown";
+let locationRequestPromise = null;
+let liveLocationWatcher = null;
+let activeRequestController = null;
+
+const LOCATION_CACHE_KEY = "octopus_location_cache_v1";
+const LOCATION_DENIAL_NOTICE_KEY = "octopus_location_denial_noticed_v1";
+const LOCATION_CACHE_MS = 10 * 60 * 1000;
+const OCTOPUS_DEBUG = Boolean(window.OCTOPUS_CONFIG && window.OCTOPUS_CONFIG.DEBUG);
+
+function debugEvent(event, detail = {}) {
+    if (OCTOPUS_DEBUG) console.debug("[Octopus]", event, detail);
+}
 
 
 // Map state
@@ -321,6 +336,13 @@ async function sendOctopusMessage() {
         return;
     }
 
+    // Location is requested only after an intentional, location-aware question.
+    // A declined request still proceeds with manual/no-location context.
+    const webIntent = classifyWebIntent(text);
+    if (webIntent.needsLocation) {
+        await ensureLocationForQuery(text, webIntent);
+    }
+
     emptyStatePanel.style.display = "none";
     answerCanvas.classList.add("active");
     appendUserCard(text);
@@ -337,6 +359,8 @@ async function sendOctopusMessage() {
             throw new Error("Octopus Puter agent did not load.");
         }
 
+        if (activeRequestController) activeRequestController.abort();
+        activeRequestController = new AbortController();
         const data = await window.OctopusPuterAgent.ask({
             message: text,
             history: conversationHistory.slice(-11, -1),
@@ -344,8 +368,15 @@ async function sendOctopusMessage() {
             lastMatchedPlaceIds,
             userLat,
             userLng,
-            userLocationText
+            userLocationText,
+            location: buildLocationContext(),
+            currentTime: new Date().toISOString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+            capabilities: { webSearch: true, maps: !!window.L, nearbySearch: true, weather: true },
+            intent: webIntent.type,
+            signal: activeRequestController.signal
         });
+        if (webIntent.type === "LOCATION_SELF" && userLocation && userLocation.source === "browser_gps") data.locationInfo = userLocation;
 
         currentPlaceId = data.currentPlaceId || currentPlaceId;
         lastMatchedPlaceIds = Array.isArray(data.lastMatchedPlaceIds)
@@ -368,6 +399,7 @@ async function sendOctopusMessage() {
             matchedPlaces: []
         });
     } finally {
+        activeRequestController = null;
         saveCurrentChatSession();
         sendBtn.disabled = false;
         octopusInput.focus();
@@ -591,6 +623,7 @@ function replaceLoadingCard(id, data) {
                     <div class="answer-text type-reveal">${formatReply(reply)}</div>
 
                     ${renderAnswerQualitySafe(data.answerQuality)}
+                    ${renderLocationInfo(data.locationInfo)}
                     ${renderTripMetaSafe(data)}
                     ${renderLiveSources(liveSources)}
                     ${renderBigImage(media, safeUi)}
@@ -602,6 +635,7 @@ function replaceLoadingCard(id, data) {
                 if (shouldShowMap) {
                     showPlacesOnMap(mapPlaces, "Places from Octopus AI");
                 }
+                if (data.locationInfo) showPlacesOnMap([], "Your location");
 
                 saveCurrentChatSession();
                 scrollCanvasBottom();
@@ -642,6 +676,13 @@ function renderResponseBadgeSafe(responseType) {
             ${escapeHtml(responseType.replaceAll("_", " "))}
         </span>
     `;
+}
+
+function renderLocationInfo(location) {
+    if (!location) return "";
+    const place = location.formattedAddress || [location.area, location.city, location.district, location.state, location.country].filter(Boolean).join(", ");
+    const accuracy = Number(location.accuracy);
+    return `<div class="location-result"><strong>📍 ${escapeHtml(place || "Your current area")}</strong>${Number.isFinite(accuracy) && accuracy > 0 ? `<span>Accuracy: about ${escapeHtml(accuracy)} m</span>` : ""}<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.latitude},${location.longitude}`)}" target="_blank" rel="noopener noreferrer">Open in Maps</a></div>`;
 }
 
 function renderAnswerQualitySafe(answerQuality) {
@@ -1295,87 +1336,146 @@ function selectResultCard(id) {
 // LOCATION
 // =====================================================
 
-function detectUserLocation() {
-    if (!navigator.geolocation) {
-        console.log("Geolocation not supported");
-        userLocationText = "";
-        return Promise.resolve(false);
-    }
+function classifyWebIntent(query = "") {
+    const q = query.toLowerCase().trim();
+    const hasHere = /\b(near me|nearby|around me|from here|where am i|my location|show my location|here|closest|nearest|current location)\b/.test(q);
+    if (/\b(where am i|show my location|my current location|where i am)\b/.test(q)) return { type: "LOCATION_SELF", needsLocation: true };
+    if (/\b(weather here|rain here|weather near me|rain near me)\b/.test(q)) return { type: "LOCAL_WEATHER", needsLocation: true };
+    if (/\b(news (here|near me|around me)|what.?s happening (here|around me))\b/.test(q)) return { type: "LOCAL_NEWS", needsLocation: true };
+    if (/\b(how far|distance)\b/.test(q) && (hasHere || /\bi\b/.test(q))) return { type: "DISTANCE", needsLocation: true };
+    if (/\b(directions?|route|how (do|can) i reach|navigate)\b/.test(q) && (hasHere || /\b(to|reach)\b/.test(q))) return { type: "DIRECTIONS", needsLocation: true };
+    if (hasHere && /\b(restaurant|hotel|hospital|pharmacy|cafe|atm|fuel|petrol|station|beach|tourist|shop|parking|charging|place|food|biriyani)\b/.test(q)) return { type: "NEARBY", needsLocation: true };
+    if (/\b(latest|today|current|currently|this week|news|weather|train status|ksrtc)\b/.test(q)) return { type: "GENERAL_WEB", needsLocation: false };
+    return { type: "NO_LOCATION_REQUIRED", needsLocation: false };
+}
 
-    return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                userLat = position.coords.latitude;
-                userLng = position.coords.longitude;
+async function getLocationPermissionState() {
+    if (!navigator.geolocation) return "unavailable";
+    if (!navigator.permissions || !navigator.permissions.query) return "unknown";
+    try {
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        locationPermissionState = status.state;
+        status.onchange = () => { locationPermissionState = status.state; renderLocationState(); };
+        return status.state;
+    } catch (_) { return "unknown"; }
+}
 
-                userLocationText = `${userLat},${userLng}`;
+function normalizeLocation(position, geocode = {}) {
+    const a = geocode.address || {};
+    const area = a.neighbourhood || a.suburb || a.quarter || a.city_district || a.village || a.town || a.city || "";
+    const city = a.city || a.town || a.municipality || a.village || "";
+    const location = {
+        latitude: position.coords.latitude, longitude: position.coords.longitude,
+        accuracy: Math.round(position.coords.accuracy || 0), timestamp: position.timestamp || Date.now(),
+        formattedAddress: geocode.display_name || [area, city, a.county, a.state, a.country].filter(Boolean).join(", "),
+        house: a.house_number || a.building || "", road: a.road || "", neighbourhood: a.neighbourhood || "",
+        suburb: a.suburb || "", village: a.village || "", town: a.town || "", city,
+        municipality: a.municipality || "", district: a.state_district || a.county || "",
+        state: a.state || "", postcode: a.postcode || "", country: a.country || "", area,
+        source: "browser_gps"
+    };
+    return location;
+}
 
-                try {
-                    const geoRes = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${userLat}&lon=${userLng}`
-                    );
+async function reverseGeocode(position) {
+    const { latitude: lat, longitude: lng } = position.coords;
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1`, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error("Reverse geocoding unavailable");
+        return await response.json();
+    } catch (error) { debugEvent("reverse-geocode-failed", { message: error.message }); return {}; }
+}
 
-                    const geoData = await geoRes.json();
-                    const address = geoData.address || {};
+function applyUserLocation(location, state = "LOCATION_GRANTED") {
+    userLocation = location; userLat = location.latitude; userLng = location.longitude;
+    userLocationText = location.formattedAddress || [location.area, location.city, location.state, location.country].filter(Boolean).join(", ") || "Approximate current location";
+    locationState = state;
+    sessionStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(location));
+    renderLocationState();
+}
 
-                    const area =
-                        address.suburb ||
-                        address.neighbourhood ||
-                        address.city_district ||
-                        address.quarter ||
-                        address.city ||
-                        address.town ||
-                        address.village ||
-                        "";
+function loadLocationCache() {
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(LOCATION_CACHE_KEY) || "null");
+        if (cached && cached.timestamp && Date.now() - cached.timestamp < LOCATION_CACHE_MS) applyUserLocation(cached);
+    } catch (_) {}
+}
 
-                    const city =
-                        address.city ||
-                        address.town ||
-                        address.municipality ||
-                        address.county ||
-                        "";
+function getCurrentUserLocation({ refresh = false } = {}) {
+    if (locationRequestPromise) return locationRequestPromise;
+    if (!navigator.geolocation) { locationState = "LOCATION_UNAVAILABLE"; renderLocationState(); return Promise.resolve(null); }
+    if (!refresh && userLocation && Date.now() - userLocation.timestamp < LOCATION_CACHE_MS) return Promise.resolve(userLocation);
+    locationState = "LOCATION_REQUESTING"; renderLocationState();
+    locationRequestPromise = new Promise(resolve => navigator.geolocation.getCurrentPosition(async position => {
+        const location = normalizeLocation(position, await reverseGeocode(position));
+        applyUserLocation(location); resolve(location);
+    }, error => {
+        locationState = error.code === error.PERMISSION_DENIED ? "LOCATION_DENIED" : "LOCATION_UNAVAILABLE";
+        locationPermissionState = error.code === error.PERMISSION_DENIED ? "denied" : locationPermissionState;
+        renderLocationState(); resolve(null);
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: refresh ? 0 : LOCATION_CACHE_MS }));
+    return locationRequestPromise.finally(() => { locationRequestPromise = null; });
+}
 
-                    const state = address.state || "";
-                    const country = address.country || "";
-
-                    userLocationText = [area, city, state, country]
-                        .filter(Boolean)
-                        .join(", ");
-
-                    updateDockNote(`Location detected · ${userLocationText}`);
-                    resolve(true);
-
-                } catch (err) {
-                    console.log("Reverse geocoding failed:", err.message);
-
-                    updateDockNote(
-                        `Location detected · ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`
-                    );
-
-                    resolve(true);
-                }
-            },
-            (error) => {
-                console.log("Location permission denied or failed:", {
-                    code: error.code,
-                    message: error.message
-                });
-
-                userLat = null;
-                userLng = null;
-                userLocationText = "";
-
-                updateDockNote("Octopus Ai may make mistakes");
-                resolve(false);
-            },
-            {
-                enableHighAccuracy: false,
-                timeout: 30000,
-                maximumAge: 600000
-            }
-        );
+function renderLocationPermissionDialog(query) {
+    return new Promise(resolve => {
+        document.getElementById("locationDialog")?.remove();
+        const el = document.createElement("div"); el.id = "locationDialog"; el.className = "location-dialog-backdrop";
+        el.innerHTML = `<section class="location-dialog" role="dialog" aria-modal="true" aria-labelledby="locationDialogTitle"><div class="location-dialog-icon">📍</div><h2 id="locationDialogTitle">Use your location?</h2><p>Octopus AI can use your current location for nearby places, directions, local recommendations, and more accurate answers. It is only used for this request.</p><div class="location-dialog-actions"><button class="location-allow">Allow location</button><button class="location-secondary">Not now</button></div><button class="location-manual">Use a location instead</button></section>`;
+        document.body.appendChild(el);
+        el.querySelector(".location-allow").onclick = () => { el.remove(); resolve("allow"); };
+        el.querySelector(".location-secondary").onclick = () => { el.remove(); resolve("skip"); };
+        el.querySelector(".location-manual").onclick = () => { el.remove(); resolve("manual"); };
     });
 }
+
+function requestManualLocation() {
+    const place = window.prompt("Enter a city, district, landmark, or postcode:", userLocationText || "");
+    if (!place || !place.trim()) return false;
+    userLocation = { formattedAddress: place.trim(), area: place.trim(), source: "manual", timestamp: Date.now() };
+    userLat = null; userLng = null; userLocationText = place.trim(); locationState = "LOCATION_MANUAL"; renderLocationState(); return true;
+}
+
+async function ensureLocationForQuery(query, intent) {
+    if (userLocation && userLocation.source === "browser_gps" && Date.now() - userLocation.timestamp >= LOCATION_CACHE_MS) locationState = "LOCATION_EXPIRED";
+    if (userLocation && locationState !== "LOCATION_EXPIRED" && !/where am i now|update my location/.test(query.toLowerCase())) return userLocation;
+    const permission = await getLocationPermissionState();
+    if (permission === "denied") {
+        locationState = "LOCATION_DENIED"; renderLocationState();
+        if (!sessionStorage.getItem(LOCATION_DENIAL_NOTICE_KEY)) {
+            sessionStorage.setItem(LOCATION_DENIAL_NOTICE_KEY, "1");
+            requestManualLocation();
+        }
+        return null;
+    }
+    if (permission === "granted") return getCurrentUserLocation({ refresh: true });
+    const choice = await renderLocationPermissionDialog(query);
+    if (choice === "manual") { requestManualLocation(); return null; }
+    if (choice !== "allow") { updateDockNote("Location not used · you can enter a place any time"); return null; }
+    const location = await getCurrentUserLocation({ refresh: /where am i now|update my location/.test(query.toLowerCase()) });
+    if (!location && locationState === "LOCATION_DENIED" && !sessionStorage.getItem(LOCATION_DENIAL_NOTICE_KEY)) {
+        sessionStorage.setItem(LOCATION_DENIAL_NOTICE_KEY, "1"); requestManualLocation();
+    }
+    return location;
+}
+
+function buildLocationContext() {
+    if (!userLocation) return { available: false, permissionState: locationPermissionState, state: locationState };
+    const { latitude, longitude, accuracy, timestamp, formattedAddress, area, city, district, state, country, source } = userLocation;
+    return { available: true, permissionState: locationPermissionState, state: locationState, latitude, longitude, accuracyMeters: accuracy, timestamp, formattedAddress, area, city, district, state, country, source };
+}
+
+function renderLocationState() {
+    const labels = { LOCATION_REQUESTING: "📍 Getting your location…", LOCATION_GRANTED: `📍 Using your location${userLocationText ? `: ${userLocationText}` : ""}`, LOCATION_DENIED: "📍 Location access is off · use a place instead", LOCATION_UNAVAILABLE: "📍 Location unavailable · use a place instead", LOCATION_MANUAL: `📍 Using manual location: ${userLocationText}`, LOCATION_LIVE: "📍 Live location is active" };
+    updateDockNote(labels[locationState] || "Puter AI · Private Kerala tools");
+}
+
+function startLiveLocation() {
+    if (!navigator.geolocation || liveLocationWatcher !== null) return;
+    liveLocationWatcher = navigator.geolocation.watchPosition(async p => applyUserLocation(normalizeLocation(p, await reverseGeocode(p)), "LOCATION_LIVE"), () => { locationState = "LOCATION_UNAVAILABLE"; renderLocationState(); }, { enableHighAccuracy: true, maximumAge: 5000 });
+    locationState = "LOCATION_LIVE"; renderLocationState();
+}
+function stopLiveLocation() { if (liveLocationWatcher !== null) navigator.geolocation.clearWatch(liveLocationWatcher); liveLocationWatcher = null; locationState = userLocation ? "LOCATION_GRANTED" : "LOCATION_UNKNOWN"; renderLocationState(); }
 
 function updateDockNote(text) {
     const note = document.querySelector(".dock-note");
@@ -1410,23 +1510,23 @@ function isMapQuestion(message = "") {
 function hasLatLng(place) {
     return (
         place &&
-        place.lat !== undefined &&
-        place.lng !== undefined &&
-        place.lat !== null &&
-        place.lng !== null &&
-        !isNaN(Number(place.lat)) &&
-        !isNaN(Number(place.lng))
+        (place.lat ?? place.latitude) !== undefined &&
+        (place.lng ?? place.lon ?? place.longitude) !== undefined &&
+        (place.lat ?? place.latitude) !== null &&
+        (place.lng ?? place.lon ?? place.longitude) !== null &&
+        !isNaN(Number(place.lat ?? place.latitude)) &&
+        !isNaN(Number(place.lng ?? place.lon ?? place.longitude))
     );
 }
 
-function initOctopusMap(lat = 10.8505, lng = 76.2711) {
+function initOctopusMap(lat, lng) {
     if (!window.L) {
         console.error("Leaflet is not loaded. Add Leaflet CDN in HTML.");
         return;
     }
 
     if (!octopusMap) {
-        octopusMap = L.map("octopusMap").setView([lat, lng], 9);
+        octopusMap = L.map("octopusMap").setView([lat, lng], 13);
 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
@@ -1455,8 +1555,8 @@ function showPlacesOnMap(places = [], title = "Places on map") {
 
     const validPlaces = places.filter(hasLatLng);
 
-    if (!validPlaces.length && !userLat && !userLng) {
-        console.warn("No latitude/longitude found for map.");
+    if (!validPlaces.length && !(Number.isFinite(Number(userLat)) && Number.isFinite(Number(userLng)))) {
+        updateDockNote("Choose a place before opening the map");
         return;
     }
 
@@ -1465,8 +1565,8 @@ function showPlacesOnMap(places = [], title = "Places on map") {
 
     const firstPlace = validPlaces[0];
 
-    const centerLat = firstPlace ? Number(firstPlace.lat) : userLat || 10.8505;
-    const centerLng = firstPlace ? Number(firstPlace.lng) : userLng || 76.2711;
+    const centerLat = firstPlace ? Number(firstPlace.lat) : Number(userLat);
+    const centerLng = firstPlace ? Number(firstPlace.lng) : Number(userLng);
 
     initOctopusMap(centerLat, centerLng);
     clearMapMarkers();
@@ -1474,14 +1574,14 @@ function showPlacesOnMap(places = [], title = "Places on map") {
     const bounds = [];
 
     validPlaces.forEach(place => {
-        const lat = Number(place.lat);
-        const lng = Number(place.lng);
+        const lat = Number(place.lat ?? place.latitude);
+        const lng = Number(place.lng ?? place.lon ?? place.longitude);
 
         const marker = L.marker([lat, lng]).addTo(octopusMap);
 
         const placeName = escapeHtml(place.name || "Place");
         const placeMeta = escapeHtml(place.address || place.district || place.region || "");
-        const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+        const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lng}`)}`;
 
         marker.bindPopup(`
             <div style="min-width:190px">
@@ -1497,7 +1597,7 @@ function showPlacesOnMap(places = [], title = "Places on map") {
         bounds.push([lat, lng]);
     });
 
-    if (userLat && userLng) {
+    if (Number.isFinite(Number(userLat)) && Number.isFinite(Number(userLng))) {
         const userMarker = L.circleMarker([userLat, userLng], {
             radius: 8,
             fillOpacity: 1
@@ -1505,6 +1605,9 @@ function showPlacesOnMap(places = [], title = "Places on map") {
 
         userMarker.bindPopup("You are here");
         mapMarkers.push(userMarker);
+        if (userLocation && Number.isFinite(Number(userLocation.accuracy)) && userLocation.accuracy > 0) {
+            mapMarkers.push(L.circle([userLat, userLng], { radius: userLocation.accuracy, color: "#43e2e6", weight: 1, fillOpacity: 0.08 }).addTo(octopusMap));
+        }
         bounds.push([userLat, userLng]);
     }
 
@@ -1712,60 +1815,10 @@ async function handlePuterAuthButton() {
 
 document.addEventListener("DOMContentLoaded", async () => {
     initChatSessions();
-    detectUserLocation();
+    getLocationPermissionState().then(() => { loadLocationCache(); renderLocationState(); });
     startAutoRipples();
 
     // Puter.js is external; update status after it loads, and retry briefly if needed.
     updatePuterLoginState();
     [500, 1200, 2500, 5000].forEach(delay => setTimeout(updatePuterLoginState, delay));
 });
-// =====================================================
-// V4 SAFETY PATCHES
-// =====================================================
-(function installOctopusSafetyPatches() {
-    const originalShowPlacesOnMap = window.showPlacesOnMap;
-    if (typeof originalShowPlacesOnMap !== "function") return;
-
-    function normalizeKeralaCoordinate(place) {
-        if (!place) return null;
-        let lat = Number(place.lat ?? place.latitude);
-        let lng = Number(place.lng ?? place.lon ?? place.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-        // Repair common lat/lng swaps.
-        if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) [lat, lng] = [lng, lat];
-
-        // Kerala bounding box with a little tolerance.
-        const isKerala = lat >= 7.5 && lat <= 13.5 && lng >= 73.5 && lng <= 78.5;
-        if (!isKerala) return null;
-        return { lat, lng };
-    }
-
-    window.hasLatLng = function (place) {
-        return !!normalizeKeralaCoordinate(place);
-    };
-
-    window.showPlacesOnMap = function (places = [], title = "Places on map") {
-        const safePlaces = (Array.isArray(places) ? places : []).map(p => {
-            const c = normalizeKeralaCoordinate(p);
-            return c ? Object.assign({}, p, c) : null;
-        }).filter(Boolean);
-
-        const safeUserLat = Number(userLat);
-        const safeUserLng = Number(userLng);
-        const oldLat = userLat, oldLng = userLng;
-        const userIsKerala = Number.isFinite(safeUserLat) && Number.isFinite(safeUserLng) &&
-            safeUserLat >= 7.5 && safeUserLat <= 13.5 && safeUserLng >= 73.5 && safeUserLng <= 78.5;
-
-        if (!userIsKerala) {
-            userLat = null;
-            userLng = null;
-        }
-        try {
-            return originalShowPlacesOnMap(safePlaces, title);
-        } finally {
-            userLat = oldLat;
-            userLng = oldLng;
-        }
-    };
-})();
